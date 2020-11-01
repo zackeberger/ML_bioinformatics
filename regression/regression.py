@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import expit
+from math import log
 
 # Import data
 phenotypes = np.loadtxt("./data/logistic_regression_data/logistic_regression.pheno", dtype='int')
@@ -42,9 +43,18 @@ def gradient_descent(step, iterations):
        
         # Perform t-th update
         beta = beta + (step * grad_at_beta)
-
-        # TODO: Calculate NLL at beta
-        NLLS[j] = 0
+        
+        # Calculate NLL at beta
+        NLL_j = 1
+        for i in range(NUM_DATA_POINTS):
+            x_i = np.array(genotypes[:,i])
+            y_i = phenotypes[i]
+            NLL_j *= expit(np.dot(beta, x_i))**y_i * (1-expit(np.dot(beta, x_i)))**(1-y_i)
+        
+        if NLL_j == 0:
+            NLLS[j] = 0
+        else:
+            NLLS[j] = -1*log(NLL_j)
 
     # Return the vector of NLLs
     return NLLS
@@ -56,4 +66,7 @@ for step_size in step_sizes:
     NLLS = gradient_descent(step_size, ITERATIONS_TO_TEST)
 
     plt.plot(iterations, NLLS)
+    plt.title("NLL vs. Iteration: Step size = " + str(step_size))
+    plt.xlabel("Iteration of Gradient Descent")
+    plt.ylabel("Negative Log Likelihood for Logistic Regression")
     plt.show()
