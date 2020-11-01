@@ -13,7 +13,7 @@ phenotypes = np.loadtxt(open("./data/ps1.phenos", "r"), delimiter=" ")
 
 # Hyperparamters
 # - B is number of permutations
-B = 10000
+B = 100000
 
 # Parse out first SNP from genotype array
 snp1 = genotypes[:,0]
@@ -23,25 +23,25 @@ NUM_SAMPLES = len(snp1)
 snp1_corr, _ = pearsonr(phenotypes, snp1)
 snp1_stat = NUM_SAMPLES * (snp1_corr**2)
 
-permutation_stat = np.empty(B)
+permutation_stats = np.empty(B)
 
 # Track how many permutations have more extreme statistics than the observations
 more_extreme_permutations = 0
 
 # Run permutation test
 for i in range(B):
-    phen_permutation = np.random.permutation(phenotypes)
-    corr, _ = pearsonr(phen_permutation, snp1)            # Calculate Pearson Correlation Coefficient
-    stat = NUM_SAMPLES * (corr**2)
-    permutation_stat[i] = stat                                  # Add statistic to list of observations
+    phen_permutation = np.random.permutation(phenotypes)    # Permute the phenotype
+    corr, _ = pearsonr(phen_permutation, snp1)              # Calculate Pearson Correlation Coefficient
+    stat = NUM_SAMPLES * (corr**2)                          # Calculate test statistic
+    permutation_stats[i] = stat                              # Add statistic to list of observations
 
+    # If the permuted stat is greater than the actual T1, note this
     if stat > snp1_stat:
         more_extreme_permutations += 1
 
 
 # Plot Histogram of test statistic from B permutations
-n, bins, patches = plt.hist(x=permutation_stat, bins='auto', color='#0504aa',
-                            alpha=0.7, rwidth=0.85)
+n, bins, patches = plt.hist(x=permutation_stats, bins='auto', color='#0504aa', alpha=0.7, rwidth=0.85)
 plt.grid(axis='y', alpha=0.75)
 plt.xlabel('Statistic')
 plt.ylabel('Frequency')
@@ -55,9 +55,9 @@ plt.axvline(x=snp1_stat, color='magenta', label='Observed T1')
 plt.show()
 
 # Calculate p-value of T1
-# TODO: THIS IS WRONG!!!???????/
 t1_p_value_permutations = more_extreme_permutations / B
 print("T1 p-value w/ permutations: " + str(t1_p_value_permutations))
+
 
 
 ########################
@@ -67,47 +67,51 @@ print("T1 p-value w/ permutations: " + str(t1_p_value_permutations))
 # Plot Chi Squared (1 degree of freedom)
 x = np.arange(0, .30, .3 / B)
 plt.plot(x, chi2.pdf(x, df=1), color='r', lw=2)
-# TODO: Appropriate? P  value correct?
-#df = 1
-#x = np.linspace(0, .3, B)
-#plt.plot(x, chi2.pdf(x, df), 'r-', lw=5, alpha=0.6, label='chi2 pdf')
-#plt.xlabel('Value')
-#plt.ylabel('Frequency')
-#plt.axvline(x=snp1_stat, color='magenta', label='Observed T1')
-#plt.title('Chi Squared PDF with 1 Degree of Freedom')
+plt.xlabel('Value')
+plt.ylabel('Frequency')
+plt.title('Chi Squared with 1 Degree of Freedom')
 plt.show()
 
-# TODO: separate plot
 # p-value of T1 based on chi square approximation
 t1_p_value_chi2 = 1 - chi2.cdf(snp1_stat, 1)
 print("T1 p-value w/ chi squared approximation: " + str(t1_p_value_chi2))
-#TODO: NO -2log, because T is chi squared!!!
+
+
 
 ######################
 ## Controlling FWER ##
 ######################
 
-# Use Bonferroni Procedure -- level/NUM_HYPOTHESES
+# Control FWER with Bonferroni Procedure -- level/NUM_HYPOTHESES
 level = 0.05
-t = 0.05 / 10
+NUM_TESTS = 10
+t = level / NUM_TESTS
 print("Threshold t using Bonferroni Procedure: " + str(t))
 
 # Decide which SNPs to reject with Bonferroni
-print("Bonferroni")
+# i.e. these are the SNPs associated with the phenotype
+print("SNPS to reject with Bonferroni:")
 for i in range(10):
     snp_corr, _ = pearsonr(phenotypes, genotypes[:,i])
     snp_stat = NUM_SAMPLES*(snp_corr**2)
     p = 1 - chi2.cdf(snp_stat, 1)
 
     if p <= t:
-        print("Reject SNP " + str(i))
+        print("Reject SNP " + str(i + 1))
 
-# Do simulation for 10,000 times
-# Get minimum p value from each permutation
-# Sort minimum p values
-# Find p value at 95th percent (or 5th depending on order)
+print("------")
 
-# TODO: THROUGHOUT EVERYTHING, SHUFFLE PHENOTYPES NOT GENOTYPES!!!!!
+
+# Algorithm to estimate FWER with permutation testing:
+# - Take permutations for B times
+# - Get minimum p value over each 10 tests from each permutation
+# - Sort minimum p values
+# - Find p value at (level)th percentile of array 
+#
+# Then, the chosen p value is such that only (level)th tests
+# are rejected, as desired
+
+
 # B is the number of permutations
 def FWER_Control(B, level):
 
@@ -124,31 +128,28 @@ def FWER_Control(B, level):
             
             current_p_values[i] = 1 - chi2.cdf(snp_stat, 1)             # Calculate p value
 
+        # Store minimum p value
         min_p_values[j] = np.min(current_p_values)
 
     # Sort the minimum p values
     sorted_min_p = np.sort(min_p_values)
     
-    # Return the p value such that 95 percent of p values are larger
+    # Return the p value such that(level) percent of p values are larger
     # This value is the new threshold
     return sorted_min_p[int(B * level)]
 
 
-# Use Permutation Testing
-B = 10000
+# Control FWER with Permutation Testing
 level = 0.05
-
 t = FWER_Control(B, level)
 print("Threshold t using Permutation Testing: " + str(t))
 
 # Decide which SNPs to reject
-print("Permutation")
+print("SNPS to reject with Permutation Test:")
 for i in range(10):
     snp_corr, _ = pearsonr(phenotypes, genotypes[:,i])
     snp_stat = NUM_SAMPLES*(snp_corr**2)
     p = 1 - chi2.cdf(snp_stat, 1)
 
     if p <= t:
-        print("Reject SNP " + str(i))
-
-# TODO: CHI^2 MUST BE NATURAL LOG!!!!!!!
+        print("Reject SNP " + str(i + 1))
