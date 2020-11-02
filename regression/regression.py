@@ -47,7 +47,7 @@ def optimize(step, iterations, test):
             # Perform t-th update
             beta = beta + (step * grad_at_beta)
         elif test == "newton":
-            D = np.zeros((NUM_DATA_POINTS, NUM_DATA_POINTS), dtype='int')
+            D = np.zeros((NUM_DATA_POINTS, NUM_DATA_POINTS))
             for i in range(NUM_DATA_POINTS):
                 x_i = np.array(genotypes[:,i])
                 sigmoid_at_beta = expit(np.dot(beta, x_i))
@@ -55,9 +55,8 @@ def optimize(step, iterations, test):
 
             # Calculate inverse Hessian (XDX^T)^{-1}
             inverse_hessian_at_beta = np.linalg.pinv(np.matmul(np.matmul(genotypes, D), np.transpose(genotypes)))
-            
             # Perform t-th update
-            beta = beta + (inverse_hessian_at_beta * grad_at_beta)
+            beta = beta + np.matmul(inverse_hessian_at_beta, grad_at_beta)
 
 
         # Calculate NLL at beta
@@ -65,8 +64,8 @@ def optimize(step, iterations, test):
         for i in range(NUM_DATA_POINTS):
             x_i = np.array(genotypes[:,i])
             y_i = phenotypes[i]
-            NLL_j *= expit(np.dot(beta, x_i))**y_i * (1-expit(np.dot(beta, x_i)))**(1-y_i)
-        
+            NLL_j *= (expit(np.dot(beta, x_i))**y_i) * ((1-expit(np.dot(beta, x_i)))**(1-y_i))
+
         if NLL_j == 0:
             NLLS[j] = 0
         else:
@@ -77,6 +76,7 @@ def optimize(step, iterations, test):
 
 
 
+iterations = list(range(1, ITERATIONS_TO_TEST + 1))
 # Test for Newton's Method
 NLLS = optimize(0, ITERATIONS_TO_TEST, "newton")
 plt.plot(iterations, NLLS)
@@ -87,7 +87,6 @@ plt.show()
 
 
 # Test driver for gradient descent
-iterations = list(range(1, ITERATIONS_TO_TEST + 1))
 for step_size in step_sizes:
     NLLS = optimize(step_size, ITERATIONS_TO_TEST, "gradient")
     plt.plot(iterations, NLLS)
