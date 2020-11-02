@@ -23,27 +23,43 @@ for i in range(NUM_SNPS):
     genotypes[i+1,:] = np.array([int(s) for s in list(genotype_strings[i])], dtype='int')
 
 
-# Gradient Descent on negative log likelihood for logistic regression
+# Run optimization on negative log likelihood for logistic regression
 # Return vector of NLLs where the i-th entry is the NLL at beta after the (i+1)-th iteration
-def gradient_descent(step, iterations):
+def optimize(step, iterations, test):
     # Initialize vector of NLLs
     NLLS = [0]*iterations
     
     # Initialize weights = 0
     beta = np.zeros(NUM_WEIGHTS, dtype='int')
     
-    # Calculate gradient at beta
+    # Iteratively update beta
     for j in range(iterations):
+        
+        # Calculate gradient at beta
         grad_at_beta = 0
         for i in range(NUM_DATA_POINTS):
             x_i = np.array(genotypes[:,i])
             y_i = phenotypes[i]
             sigmoid_at_beta = expit(np.dot(beta, x_i))
             grad_at_beta += (y_i - sigmoid_at_beta)*x_i
-       
-        # Perform t-th update
-        beta = beta + (step * grad_at_beta)
-        
+
+        if test == "gradient":
+            # Perform t-th update
+            beta = beta + (step * grad_at_beta)
+        elif test == "newton":
+            D = np.zeros((NUM_DATA_POINTS, NUM_DATA_POINTS), dtype='int')
+            for i in range(NUM_DATA_POINTS):
+                x_i = np.array(genotypes[:,i])
+                sigmoid_at_beta = expit(np.dot(beta, x_i))
+                D[i,i] = sigmoid_at_beta*(1 - sigmoid_at_beta)
+
+            # Calculate inverse Hessian (XDX^T)^{-1}
+            inverse_hessian_at_beta = np.linalg.pinv(np.matmul(np.matmul(genotypes, D), np.transpose(genotypes)))
+            
+            # Perform t-th update
+            beta = beta + (inverse_hessian_at_beta * grad_at_beta)
+
+
         # Calculate NLL at beta
         NLL_j = 1
         for i in range(NUM_DATA_POINTS):
@@ -60,13 +76,24 @@ def gradient_descent(step, iterations):
     return NLLS
 
 
-# Test driver for gradient descent
-iterations = list(range(1, 51))
-for step_size in step_sizes:
-    NLLS = gradient_descent(step_size, ITERATIONS_TO_TEST)
 
+# Test for Newton's Method
+NLLS = optimize(0, ITERATIONS_TO_TEST, "newton")
+plt.plot(iterations, NLLS)
+plt.title("NLL vs. Iteration: Newton's Method")
+plt.xlabel("Iteration of Newton's Method")
+plt.ylabel("Negative Log Likelihood for Logistic Regression")
+plt.show()
+
+
+# Test driver for gradient descent
+iterations = list(range(1, ITERATIONS_TO_TEST + 1))
+for step_size in step_sizes:
+    NLLS = optimize(step_size, ITERATIONS_TO_TEST, "gradient")
     plt.plot(iterations, NLLS)
     plt.title("NLL vs. Iteration: Step size = " + str(step_size))
     plt.xlabel("Iteration of Gradient Descent")
     plt.ylabel("Negative Log Likelihood for Logistic Regression")
     plt.show()
+
+
