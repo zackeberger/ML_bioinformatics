@@ -4,8 +4,8 @@ from scipy.special import expit
 from math import log
 
 # Import data
-phenotypes = np.loadtxt("./data/logistic_regression_data/logistic_regression.pheno", dtype='int')
-genotype_strings = np.loadtxt("./data/logistic_regression_data/logistic_regression.geno", dtype='str')
+phenotypes = np.loadtxt("../data/logistic_regression_data/logistic_regression.pheno", dtype='int')
+genotype_strings = np.loadtxt("../data/logistic_regression_data/logistic_regression.geno", dtype='str')
 
 # Constants related to data
 NUM_SNPS = len(genotype_strings)
@@ -16,7 +16,7 @@ step_sizes = np.zeros(5)            # Step sizes to test
 for i in range(5):
     step_sizes[i] = 10**(-(i+1))
 
-# Massage the genotypes into a matrix
+# Massage the genotypes into a numpy matrix
 genotypes = np.zeros((NUM_WEIGHTS, NUM_DATA_POINTS), dtype='int')
 genotypes[0,:] = np.ones(NUM_DATA_POINTS, dtype='int')
 for i in range(NUM_SNPS):
@@ -71,14 +71,16 @@ def optimize(step, iterations, test):
         else:
             NLLS[j] = -1*log(NLL_j)
 
-    # Return the vector of NLLs
-    return NLLS
+    # Return the vector of NLLs and the weight vector beta
+    return NLLS, beta
 
 
 
 iterations = list(range(1, ITERATIONS_TO_TEST + 1))
+
 # Test for Newton's Method
-NLLS = optimize(0, ITERATIONS_TO_TEST, "newton")
+NLLS, beta = optimize(0, ITERATIONS_TO_TEST, "newton")
+print("Weight Vector: " + str(beta))
 plt.plot(iterations, NLLS)
 plt.title("NLL vs. Iteration: Newton's Method")
 plt.xlabel("Iteration of Newton's Method")
@@ -88,7 +90,7 @@ plt.show()
 
 # Test driver for gradient descent
 for step_size in step_sizes:
-    NLLS = optimize(step_size, ITERATIONS_TO_TEST, "gradient")
+    NLLS, _ = optimize(step_size, ITERATIONS_TO_TEST, "gradient")
     plt.plot(iterations, NLLS)
     plt.title("NLL vs. Iteration: Step size = " + str(step_size))
     plt.xlabel("Iteration of Gradient Descent")
