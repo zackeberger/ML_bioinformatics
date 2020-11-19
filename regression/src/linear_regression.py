@@ -20,7 +20,7 @@ for i in range(NUM_SNPS):
     genotypes[i,:] = np.array([int(s) for s in list(genotype_strings[i])], dtype='int')
 
 # Calculate rejection threshold with Bonferroni Procedure
-threshold = LEVEL / NUM_SNPS
+threshold = LEVEL / (NUM_SNPS*4)
 
 # Store p-values from the following regression test
 p_values = np.zeros((NUM_PHENOTYPES, NUM_SNPS))
